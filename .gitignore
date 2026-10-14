@@ -2,7 +2,7 @@
 venv/
 env/
 
-.env
+audio_comprehender/.env
 *.env
 
 audio_comprehender/models/ser_model_checkpoints/
