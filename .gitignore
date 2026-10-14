@@ -5,7 +5,9 @@ env/
 .env
 *.env
 
-ser_model_checkpoints/
+audio_comprehender/models/ser_model_checkpoints/
+audio_comprehender/tests.py
+
 *.safetensors
 *.bin
 *.pt
