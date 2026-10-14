@@ -1,9 +1,3 @@
-"""
-Общая конфигурация для всего пакета audio_comprehender.
-Один файл со всеми путями/токенами — остальные модули импортируют отсюда,
-а не читают os.environ каждый в своём углу.
-"""
-
 import os
 import sys
 from pathlib import Path
@@ -34,9 +28,19 @@ if sys.platform == "win32":
 # Пути к моделям
 # ---------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+PACKAGE_DIR = Path(__file__).resolve().parent
+BASE_DIR = PACKAGE_DIR.parent
 
-SER_MODEL_DIR = os.getenv("SER_MODEL_DIR", str(BASE_DIR / "ser_model_final"))
+MODELS_DIR = PACKAGE_DIR / "models"
+
+SER_MODEL_DIR = Path(os.getenv("SER_MODEL_DIR", str(MODELS_DIR / "ser_model_final")))
+SER_CHECKPOINTS_DIR = Path(os.getenv("SER_CHECKPOINTS_DIR",str(MODELS_DIR / "ser_model_checkpoints")))
+
+DATA_DIR = Path(os.getenv("DATA_DIR", r'Disk:\crowd_data\crowd')) # DATA_DIR=D:\crowd_data\crowd
+TRAIN_TSV     = Path(os.getenv("TRAIN_TSV",     DATA_DIR / "crowd_train" / "raw_crowd_train.tsv"))
+TEST_TSV      = Path(os.getenv("TEST_TSV",      DATA_DIR / "crowd_test"  / "raw_crowd_test.tsv"))
+WAV_DIR_TRAIN = Path(os.getenv("WAV_DIR_TRAIN", DATA_DIR / "crowd_train"))
+WAV_DIR_TEST  = Path(os.getenv("WAV_DIR_TEST",  DATA_DIR / "crowd_test"))
 
 WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "medium")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cuda")
@@ -45,6 +49,8 @@ WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
 DIARIZATION_MODEL = "pyannote/speaker-diarization-3.1"
 
 SAMPLE_RATE = 16000
+
+EMOTIONS = ["neutral", "positive", "angry", "sad", "other"]
 
 # ---------------------------------------------------------------------------
 # Секреты / внешние сервисы

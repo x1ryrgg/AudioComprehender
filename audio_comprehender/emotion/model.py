@@ -5,9 +5,7 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
 
-from audio_comprehender.config import SER_MODEL_DIR, SAMPLE_RATE
-
-EMOTIONS = ["neutral", "positive", "angry", "sad", "other"]
+from audio_comprehender.config import SER_MODEL_DIR, SAMPLE_RATE, EMOTIONS
 
 
 class SERScorer:

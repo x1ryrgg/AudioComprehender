@@ -1,14 +1,3 @@
-"""
-Пайплайн дообучения (fine-tuning) модели Wav2Vec2 для распознавания
-эмоций в речи на датасете Dusha (часть crowd).
-
-Рекомендуется запускать в Google Colab с GPU (T4 хватит для старта,
-для полного датасета лучше A100 — как и делали авторы модели на HF).
-
-Установка зависимостей (в Colab выполнить первой ячейкой):
-    !pip install transformers torch torchaudio datasets pandas scikit-learn evaluate
-"""
-
 import os
 import pandas as pd
 import soundfile as sf
@@ -23,8 +12,8 @@ from transformers import (
 )
 from sklearn.metrics import accuracy_score, f1_score
 
-from global_constants import (DATA_DIR, TRAIN_TSV, TEST_TSV, WAV_DIR_TRAIN, WAV_DIR_TEST,
-                              SAMPLE_RATE, EMOTIONS)
+from ..config import DATA_DIR, TRAIN_TSV, TEST_TSV, WAV_DIR_TRAIN, WAV_DIR_TEST, EMOTIONS, SAMPLE_RATE, SER_MODEL_DIR, SER_CHECKPOINTS_DIR
+
 
 # ---------------------------------------------------------------------------
 # 1. КОНФИГУРАЦИЯ
@@ -55,7 +44,7 @@ def load_and_aggregate(tsv_path: str) -> pd.DataFrame:
     df = pd.read_csv(tsv_path, sep="\t")
     print(f"Загружено {len(df)} сырых записей (голосов асессоров) из {tsv_path}")
 
-    # Убираем строки без метки эмоции от асессора (на всякий случай)
+    # Убираем строки без метки эмоции от асессора
     df = df.dropna(subset=["annotator_emo"])
 
     # Majority vote по каждому уникальному файлу
@@ -195,7 +184,7 @@ def main():
     # batch_size=8 подобран под 8GB видеопамяти (RTX 3050) — если вылетит
     # CUDA out of memory, уменьши до 4 и увеличь gradient_accumulation_steps до 4
     training_args = TrainingArguments(
-        output_dir="./ser_model_checkpoints",
+        output_dir=str(SER_CHECKPOINTS_DIR),
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
         gradient_accumulation_steps=2,
@@ -219,17 +208,27 @@ def main():
     )
 
     # --- Обучение ---
-    # Продолжаем с последнего чекпоинта, если он есть — не нужно обучать
-    # заново с нуля. Trainer сам найдёт последний чекпоинт в output_dir
-    # при resume_from_checkpoint=True (или передай точный путь строкой).
-    import glob
+    SER_CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    existing_checkpoints = glob.glob("./ser_model_checkpoints/checkpoint-*")
+    # Ищем сохранённые состояния обучения
+    existing_checkpoints = sorted(
+        SER_CHECKPOINTS_DIR.glob("checkpoint-*"),
+        key=lambda path: int(path.name.split("-")[-1]),
+    )
+
     if existing_checkpoints:
-        print(f"Найдены чекпоинты, продолжаю обучение с последнего: {existing_checkpoints}")
-        trainer.train(resume_from_checkpoint=True)
+        latest_checkpoint = existing_checkpoints[-1]
+
+        print(
+            f"Продолжаем обучение с чекпоинта: "
+            f"{latest_checkpoint}"
+        )
+
+        trainer.train(
+            resume_from_checkpoint=str(latest_checkpoint)
+        )
     else:
-        print("Чекпоинтов не найдено, обучение с нуля")
+        print("Чекпоинтов не найдено. Начинаем обучение.")
         trainer.train()
 
     # --- Финальная оценка ---
@@ -237,16 +236,16 @@ def main():
     print("Финальные метрики на тесте:", results)
 
     # --- Сохранение модели ---
-    trainer.save_model("./ser_model_final")
-    feature_extractor.save_pretrained("./ser_model_final")
-    print("Модель сохранена в ./ser_model_final")
+    trainer.save_model(str(SER_MODEL_DIR))
+    feature_extractor.save_pretrained(str(SER_MODEL_DIR))
+    print(f"Модель сохранена в {SER_MODEL_DIR}")
 
 
 # ---------------------------------------------------------------------------
 # 6. ИНФЕРЕНС (проверка на одном файле после обучения)
 # ---------------------------------------------------------------------------
 
-def predict_single_file(audio_path: str, model_dir: str = "./ser_model_final"):
+def predict_single_file(audio_path: str, model_dir: str = SER_MODEL_DIR):
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_dir)
     model = Wav2Vec2ForSequenceClassification.from_pretrained(model_dir)
     model.eval()
@@ -272,4 +271,4 @@ def predict_single_file(audio_path: str, model_dir: str = "./ser_model_final"):
 
 if __name__ == "__main__":
     # main()
-    predict_single_file(audio_path=DATA_DIR + r"\crowd_test\dialogs\holodniy_zvonok.mp3")
+    predict_single_file(audio_path=DATA_DIR / "crowd_test/wavs/0a664e04b8ee0748d460dab062643520.wav")

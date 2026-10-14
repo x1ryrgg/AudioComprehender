@@ -7,26 +7,21 @@
 
 from audio_comprehender.asr.types import TranscriptSegment
 
-MANAGER_KEYWORDS = [
-        "компания",
-        "меня зовут",
-        "чем могу помочь",
-        "оператор",
-        "служба",
-        "добрый день, вы позвонили",
-        "стоимость составит",
-        "стоимость поездки",
-        "с вами говорит",
-    ]
+# Слова-маркеры для определения, кто из двух говорящих — консультант приёмной комиссии.
+# Это ГИПОТЕЗА, не проверенная на реальных звонках: одни и те же слова могут сказать
+# обе стороны ("Это приёмная комиссия?" — звонящий, "Приёмная комиссия, слушаю" —
+# консультант), поэтому нейтральные фразы вроде "приёмная комиссия" или "ВГТУ" сюда
+# намеренно не включены. Уточнять по реальным записям. В проде роль надёжнее брать
+# из метаданных телефонии (какая линия — сотрудника).
+STAFF_KEYWORDS = [
+    "слушаю", "чем могу помочь", "вы позвонили", "могу подсказать", "обратите внимание",
+]
 
-CLIENT_KEYWORDS = [
-    "это вызов такси?",
-    "хочу узнать",
-    "подскажите",
-    "сколько будет стоить",
-    "мне нужно",
-    "я звоню по поводу",
-    "у меня вопрос",
+CALLER_KEYWORDS = [
+    "это приёмная комиссия", "это приемная комиссия", "я звоню", "хочу поступить",
+    "хочу поступать", "хотел бы узнать", "хотела бы узнать", "хочу узнать",
+    "я абитуриент", "моя дочь", "мой сын", "мой ребёнок", "я мама", "я папа",
+    "какие баллы", "проходной балл", "как подать документы", "у меня вопрос",
 ]
 
 
@@ -93,21 +88,15 @@ def guess_manager_speaker(segments: list[TranscriptSegment]) -> str:
         return "SPEAKER_00"
 
     scores: dict[str, int] = {}
-    for seg in segments:
-        speaker = seg.speaker
+    for seg in segments[:6]:
         text_lower = seg.text.lower()
-
-        scores.setdefault(speaker, 0)
-
-        for phrase in MANAGER_KEYWORDS:
-            if phrase.lower() in text_lower:
-                scores[speaker] += 1
-
-        for phrase in CLIENT_KEYWORDS:
-            if phrase.lower() in text_lower:
-                scores[speaker] -= 1
-
-    print("Оценки спикеров:", scores)
+        scores.setdefault(seg.speaker, 0)
+        for phrase in STAFF_KEYWORDS:
+            if phrase in text_lower:
+                scores[seg.speaker] += 1
+        for phrase in CALLER_KEYWORDS:
+            if phrase in text_lower:
+                scores[seg.speaker] -= 1
 
     if len(set(scores.values())) > 1:
         return max(scores, key=scores.get)

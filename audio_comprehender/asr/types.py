@@ -25,9 +25,9 @@ class CallTranscript:
         return [s for s in self.segments if s.speaker != self.manager_speaker]
 
     def as_dialogue_text(self) -> str:
-        """Текст вида 'МЕНЕДЖЕР: ...\\nКЛИЕНТ: ...' — то, что уходит в LLM."""
+        """Текст вида 'КОНСУЛЬТАНТ: ...\\nАБИТУРИЕНТ: ...' — то, что уходит в LLM."""
         lines = []
         for seg in self.segments:
-            role = "МЕНЕДЖЕР" if seg.speaker == self.manager_speaker else "КЛИЕНТ"
+            role = "КОНСУЛЬТАНТ" if seg.speaker == self.manager_speaker else "АБИТУРИЕНТ"
             lines.append(f"{role}: {seg.text}")
         return "\n".join(lines)
