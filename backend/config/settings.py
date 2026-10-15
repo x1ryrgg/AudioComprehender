@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'nplusone.ext.django',
     'drf_spectacular',
     'django_filters',
+    'django_celery_beat',
 
     'call_recognition.apps.CallRecognitionConfig',
 
@@ -256,3 +257,23 @@ SPECTACULAR_SETTINGS = {
     },
     'SECURITY': [{'BearerAuth': []}],
 }
+
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Europe/Moscow"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+
+# celery -A config worker -l info --pool=solo
+#
+# # Beat
+# celery -A config beat -l info
+#
+# # Flower
+# celery -A config flower --port=5555

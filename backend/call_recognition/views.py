@@ -1,6 +1,6 @@
 from rest_framework import permissions
-from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class UnAuthorizedTestView(APIView):
@@ -16,8 +16,3 @@ class AuthorizedTestView(APIView):
     def get(self, request):
         info = self.request.user.username
         return Response({"info": info})
-
-
-
-
-
