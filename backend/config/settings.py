@@ -53,6 +53,15 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
+# Запуск анализатора из его собственного окружения (audio_comprehender/.venv)
+ANALYZER_ROOT = BASE_DIR.parent  # корень репозитория AudioComprehender
+_venv_python = "Scripts/python.exe" if os.name == "nt" else "bin/python"
+ANALYZER_PYTHON = os.getenv("ANALYZER_PYTHON", str(ANALYZER_ROOT / "audio_comprehender" / ".venv" / _venv_python))
+ANALYZER_SCRIPT = os.getenv("ANALYZER_SCRIPT", str(ANALYZER_ROOT / "run_analysis.py"))
+ANALYZER_CWD = os.getenv("ANALYZER_CWD", str(ANALYZER_ROOT))
+ANALYZER_TIMEOUT = int(os.getenv("ANALYZER_TIMEOUT", 25 * 60))
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -158,6 +167,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = "/media/"
+
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -201,7 +214,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-            'rest_framework.permissions.AllowAny',
+            'rest_framework.permissions.IsAuthenticated',
         ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -268,9 +281,12 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Europe/Moscow"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# долгие тяжёлые задачи
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 
-# celery -A config worker -l info --pool=solo
+# celery -A config worker -l info --pool=solo --concurrency=1
 #
 # # Beat
 # celery -A config beat -l info
