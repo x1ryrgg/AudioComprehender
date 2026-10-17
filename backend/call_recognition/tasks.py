@@ -24,6 +24,7 @@ def _save_report(call: Call, report: dict) -> None:
                 "text_score": text.get("overall_score"),
                 "emotion_score": emotion.get("score"),
                 "negative_share": emotion.get("negative_share"),
+                "analyzer_version": report.get("analyzer_version") or "",
                 "flags": report.get("flags") or [],
                 "text_analysis": text,
                 "emotion_analysis": emotion,

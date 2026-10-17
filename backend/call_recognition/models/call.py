@@ -55,6 +55,9 @@ class Evaluation(models.Model):
     emotion_score = models.FloatField(null=True, blank=True)
     negative_share = models.FloatField(null=True, blank=True)
 
+    # Версия анализатора (код LLM-части, веса), которой получена оценка
+    analyzer_version = models.CharField(max_length=64, blank=True, db_index=True)
+
     flags = models.JSONField(default=list, blank=True)
     text_analysis = models.JSONField(default=dict, blank=True)  # asdict(TextAnalysis)
     emotion_analysis = models.JSONField(default=dict, blank=True)  # score, distribution, timeline...

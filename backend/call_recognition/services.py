@@ -8,48 +8,54 @@ from pathlib import Path
 from django.conf import settings
 
 
+# Папка анализатора (лежит внутри backend). По ней считается версия:
+# правки остального кода backend версию анализатора не меняют.
+ANALYZER_PATHS = ["audio_comprehender"]
+
 class AnalysisError(RuntimeError):
     pass
 
 
-def run_analysis(call) -> dict:
-    """Анализ звонка. Возвращает словарь CallReport.to_dict().
+def get_analyzer_version() -> str:
+    """Версия анализатора.
 
-    Анализатор (audio_comprehender) живёт в своём проекте и своём виртуальном окружении,
-    поэтому backend запускает его отдельным процессом через run_analysis.py
-    и читает готовый JSON-отчёт.
+    В Docker задаётся при сборке через ANALYZER_VERSION (внутри образа нет .git).
+    Локально считается по git: короткий хэш последнего коммита, затронувшего audio_comprehender/,
+    с суффиксом -dirty, если в отслеживаемых файлах есть незакоммиченные правки.
     """
-    python = Path(settings.ANALYZER_PYTHON)
-    script = Path(settings.ANALYZER_SCRIPT)
-    for path in (python, script):
-        if not path.exists():
-            raise AnalysisError(f"Не найден файл: {path}")
+    if getattr(settings, "ANALYZER_VERSION", ""):
+        return settings.ANALYZER_VERSION
 
-    # Переменные окружения backend не должны влиять на интерпретатор анализатора
-    env = {k: v for k, v in os.environ.items() if k not in {"VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"}}
-    # Без этого print() с кириллицей/символами падает в Windows при выводе в pipe
-    env["PYTHONUTF8"] = "1"
+    def git(*args):
+        return subprocess.run(
+            ["git", *args],
+            cwd=settings.BASE_DIR,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
+            check=True,
+        ).stdout.strip()
 
-    with tempfile.TemporaryDirectory() as tmp:
-        out_path = Path(tmp) / "report.json"
-        cmd = [str(python), str(script), call.audio_file.path, "--out", str(out_path)]
-        try:
-            proc = subprocess.run(
-                cmd,
-                cwd=settings.ANALYZER_CWD,
-                env=env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=settings.ANALYZER_TIMEOUT,
-            )
-        except subprocess.TimeoutExpired:
-            raise AnalysisError(f"Анализ превысил лимит {settings.ANALYZER_TIMEOUT} с")
+    try:
+        commit = git("log", "-1", "--format=%h", "--", *ANALYZER_PATHS)
+        dirty = git("status", "--porcelain", "--untracked-files=no", "--", *ANALYZER_PATHS)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    if not commit:
+        return "unknown"
+    return f"{commit}-dirty" if dirty else commit
 
-        if proc.returncode != 0:
-            tail = (proc.stderr or proc.stdout or "")[-1500:]
-            raise AnalysisError(f"Анализатор завершился с кодом {proc.returncode}:\n{tail}")
 
-        return json.loads(out_path.read_text(encoding="utf-8"))
+def run_analysis(call) -> dict:
+    """Анализ звонка. Возвращает словарь CallReport.to_dict()."""
+
+    # Ленивый импорт: torch и модели загружаются только в воркере и только при первом звонке.
+    # Не переносить импорт наверх файла: иначе torch импортируется до fork воркера Celery.
+    from audio_comprehender.report import analyze_call
+
+    data = analyze_call(call.audio_file.path).to_dict()
+    data.setdefault("analyzer_version", get_analyzer_version())
+    return data
 

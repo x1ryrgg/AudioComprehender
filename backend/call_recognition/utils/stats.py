@@ -97,10 +97,19 @@ def build_stats(qs) -> dict:
     flag_counter = Counter(_flag_type(flag) for _, _, flags in rows for flag in (flags or []))
     flag_types = [{"type": t, "count": c} for t, c in flag_counter.most_common()]
 
+    # Оценки разных версий анализатора несравнимы, поэтому отдаём список версий для фильтра на фронте
+    versions = [
+        {"version": row["evaluation__analyzer_version"] or "unknown", "calls": row["calls"]}
+        for row in qs.values("evaluation__analyzer_version")
+        .annotate(calls=Count("id"))
+        .order_by("-calls")
+    ]
+
     return {
         "overall": overall,
         "criteria": criteria,
         "by_day": by_day,
         "by_consultant": by_consultant,
         "flag_types": flag_types,
+        "analyzer_versions": versions,
     }

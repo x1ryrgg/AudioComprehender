@@ -3,7 +3,8 @@ from rest_framework.exceptions import ValidationError
 
 from call_recognition.models.user import User
 
-class UserSerializer(serializers.ModelSerializer):
+
+class RegisterUserSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
@@ -29,3 +30,21 @@ class UserSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(**validated_data,)
         return user
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Профиль текущего пользователя. """
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "first_name", "last_name", "role"]
+        read_only_fields = ["id", "username", "role"]
+
+
+class ConsultantSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="display_name", read_only=True)
+    calls_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "name", "calls_count"]

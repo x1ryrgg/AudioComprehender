@@ -6,10 +6,10 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from call_recognition.models.call import Call
-from .utils.permissions import CallPermission
-from .utils.processing import enqueue_processing, retry_processing
-from .utils.selectors import calls_for_user, filter_calls
-from .utils.stats import build_stats
+from call_recognition.utils.permissions import CallPermission
+from call_recognition.utils.processing import enqueue_processing, retry_processing
+from call_recognition.utils.selectors import calls_for_user, filter_calls
+from call_recognition.utils.stats import build_stats
 from call_recognition.serializers.call import (
     CallCreateSerializer,
     CallDetailSerializer,

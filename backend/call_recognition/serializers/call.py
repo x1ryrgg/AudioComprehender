@@ -5,9 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from call_recognition.models.call import Call, Transcript, Evaluation
 from call_recognition.models.user import User
-
-ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
-MAX_SIZE_MB = 100
+from call_recognition.utils.constants import ALLOWED_EXTENSIONS, MAX_SIZE_MB
 
 
 def _consultants():
@@ -74,13 +72,16 @@ class CallListSerializer(serializers.ModelSerializer):
     text_score = serializers.FloatField(source="evaluation.text_score", read_only=True, allow_null=True)
     emotion_score = serializers.FloatField(source="evaluation.emotion_score", read_only=True, allow_null=True)
     flags = serializers.JSONField(source="evaluation.flags", read_only=True, allow_null=True)
+    analyzer_version = serializers.CharField(
+        source="evaluation.analyzer_version", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Call
         fields = [
             "id", "original_filename", "consultant", "called_at", "duration",
             "status", "error", "created_at", "processed_at",
-            "final_score", "text_score", "emotion_score", "flags",
+            "final_score", "text_score", "emotion_score", "flags", "analyzer_version",
         ]
 
 
@@ -89,7 +90,7 @@ class EvaluationSerializer(serializers.ModelSerializer):
         model = Evaluation
         fields = [
             "final_score", "text_score", "emotion_score", "negative_share",
-            "flags", "text_analysis", "emotion_analysis",
+            "flags", "text_analysis", "emotion_analysis", "analyzer_version",
         ]
 
 

@@ -2,11 +2,11 @@
 venv/
 env/
 
-audio_comprehender/.env
+backend/audio_comprehender/.env
 *.env
 
-audio_comprehender/models/ser_model_checkpoints/
-audio_comprehender/tests.py
+backend/audio_comprehender/models/ser_model_checkpoints/
+backend/audio_comprehender/tests.py
 
 *.safetensors
 *.bin

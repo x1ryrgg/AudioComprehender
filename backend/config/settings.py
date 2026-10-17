@@ -52,17 +52,7 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
-
-# Запуск анализатора из его собственного окружения (audio_comprehender/.venv)
-ANALYZER_ROOT = BASE_DIR.parent  # корень репозитория AudioComprehender
-_venv_python = "Scripts/python.exe" if os.name == "nt" else "bin/python"
-ANALYZER_PYTHON = os.getenv("ANALYZER_PYTHON", str(ANALYZER_ROOT / "audio_comprehender" / ".venv" / _venv_python))
-ANALYZER_SCRIPT = os.getenv("ANALYZER_SCRIPT", str(ANALYZER_ROOT / "run_analysis.py"))
-ANALYZER_CWD = os.getenv("ANALYZER_CWD", str(ANALYZER_ROOT))
-ANALYZER_TIMEOUT = int(os.getenv("ANALYZER_TIMEOUT", 25 * 60))
-
-
-# Application definition
+ANALYZER_VERSION = os.getenv("ANALYZER_VERSION", "")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -252,23 +242,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
-
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
-        'persistAuthorization': True,  # Сохраняет токен при перезагрузке страницы
+        'persistAuthorization': True,
     },
-
-    # Описание схемы OpenAPI 3.0:
-    'APPEND_COMPONENTS': {
-        'securitySchemes': {
-            'BearerAuth': {
-                'type': 'http',
-                'scheme': 'bearer',
-                'bearerFormat': 'JWT',
-            }
-        }
-    },
-    'SECURITY': [{'BearerAuth': []}],
 }
 
 
@@ -287,7 +264,9 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 
 # celery -A config worker -l info --pool=solo --concurrency=1
-#
+# celery -A config worker -l info -P threads --concurrency=2 - 2 потока то бишь 2 одновременные задачи
+
+
 # # Beat
 # celery -A config beat -l info
 #

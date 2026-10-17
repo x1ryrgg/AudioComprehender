@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import DefaultRouter, SimpleRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -11,12 +11,15 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from .views.user import RegisterUserView
+from .views.user import RegisterUserView, ConsultantViewSet, MeView
 from .views.call import StatsView, CallViewSet
 
 
-router = DefaultRouter()
-router.register("calls", CallViewSet, basename="call")
+call_router = DefaultRouter()
+call_router.register("calls", CallViewSet, basename="call")
+
+consultant_router = DefaultRouter()
+consultant_router.register("consultants", ConsultantViewSet, basename="consultant")
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,8 +29,11 @@ urlpatterns = [
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
+    path('me/', MeView.as_view(), name='me'),
+    path("", include(consultant_router.urls)),
+
     path("stats/", StatsView.as_view(), name="stats"),
-    path("", include(router.urls)),
+    path("", include(call_router.urls)),
 
     # --- OpenAPI 3 & Swagger / Redoc ---
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
