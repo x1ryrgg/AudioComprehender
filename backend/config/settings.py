@@ -64,7 +64,6 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
-    'nplusone.ext.django',
     'drf_spectacular',
     'django_filters',
     'django_celery_beat',
@@ -76,14 +75,21 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'nplusone.ext.django.NPlusOneMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    INSTALLED_APPS.append('nplusone.ext.django')
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index('django.contrib.auth.middleware.AuthenticationMiddleware'),
+        'nplusone.ext.django.NPlusOneMiddleware',
+    )
 
 ROOT_URLCONF = 'config.urls'
 
@@ -104,10 +110,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 AUTH_USER_MODEL = "call_recognition.User"
 
 DATABASES = {
@@ -120,9 +122,6 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
-
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -151,18 +150,13 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
 STATIC_URL = 'static/'
+# Сюда collectstatic собирает статику (админка, Swagger), отдаёт её WhiteNoise
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 
 MEDIA_ROOT = BASE_DIR / "media"
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -210,29 +204,25 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'handlers': {
-        'info_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'logs/info.log',
-            'formatter': 'verbose'
-        },
-    },
     'formatters': {
         'verbose': {
-            'format': '%(asctime)s %(levelname)s %(message)s',
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
         },
     },
-    'loggers': {
-        '': {
-            'handlers': ['info_file'],
-            'level': 'DEBUG',
-            'propagate': False
-        }
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
     },
 }
 
@@ -263,12 +253,11 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 
-# celery -A config worker -l info --pool=solo --concurrency=1
-# celery -A config worker -l info -P threads --concurrency=2 - 2 потока то бишь 2 одновременные задачи
-
-
-# # Beat
-# celery -A config beat -l info
+# Запуск без Docker:
+# Windows (prefork не поддерживается, по одному звонку за раз):
+#   celery -A config worker -l info -P solo
+# Linux / Docker (отдельные процессы, у каждого свои модели в памяти):
+#   celery -A config worker -l info --concurrency=2
 #
-# # Flower
-# celery -A config flower --port=5555
+# Beat:   celery -A config beat -l info
+# Flower: celery -A config flower --port=5555

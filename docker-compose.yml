@@ -1,0 +1,117 @@
+name: audio-comprehender
+
+# Общие настройки для сервисов на одном образе (web, worker, beat, flower)
+x-backend: &backend
+  build: ./backend
+  image: audio-comprehender-backend
+  env_file: .env
+  # environment перекрывает значения из .env: внутри Docker адреса сервисов другие, DEBUG выключен
+  environment: &backend-env
+    DEBUG: "False"
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/1
+    HF_HOME: /models/hf
+    HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-0}
+    ANALYZER_VERSION: ${ANALYZER_VERSION:-}
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    <<: *backend
+    command: ["web"]
+    volumes:
+      - media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    environment:
+      <<: *backend-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    # PyTorch использует общую память между процессами; значение по умолчанию (64 МБ) мало
+    shm_size: "2gb"
+    volumes:
+      - media:/app/media
+      - hf_cache:/models/hf
+    depends_on:
+      web:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  beat:
+    <<: *backend
+    command: ["beat"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  # Мониторинг Celery, запускается отдельно: docker compose --profile tools up -d flower
+  flower:
+    <<: *backend
+    command: ["flower"]
+    profiles: ["tools"]
+    ports:
+      - "127.0.0.1:5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - media:/app/media:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:
+  hf_cache:

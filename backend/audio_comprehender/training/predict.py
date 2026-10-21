@@ -4,7 +4,7 @@ import torchaudio
 
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
 
-from config import SER_MODEL_DIR, SAMPLE_RATE, DATA_DIR, EMOTIONS
+from audio_comprehender.config import SER_MODEL_DIR, SAMPLE_RATE, DATA_DIR, EMOTIONS
 
 
 def predict_single_file(audio_path: str, model_dir: str = SER_MODEL_DIR) -> dict:

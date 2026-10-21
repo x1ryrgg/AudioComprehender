@@ -1,0 +1,21 @@
+# окружение, секреты, служебное
+.venv
+.env
+.git
+.idea
+.vscode
+poetry.toml
+
+# кэш и временные файлы
+**/__pycache__
+**/*.pyc
+celerybeat-schedule*
+
+# данные, которые не должны попадать в образ
+media
+logs
+staticfiles
+
+# обучение SER-модели в контейнере не нужно
+audio_comprehender/training
+audio_comprehender/models/ser_model_checkpoints
