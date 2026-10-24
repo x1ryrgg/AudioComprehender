@@ -68,8 +68,6 @@ def build_stats(qs) -> dict:
         .order_by("-avg_score")
     )
 
-    # Критерии и флаги лежат в JSON, поэтому считаем их в Python
-    # (для объёмов дипломной работы этого достаточно)
     rows = list(qs.values_list("consultant_id", "evaluation__text_analysis", "evaluation__flags"))
 
     analyses = [analysis or {} for _, analysis, _ in rows]

@@ -13,6 +13,8 @@ backend/audio_comprehender/tests.py
 *.pt
 *.pth
 
+*.ipynb
+
 *.wav
 *.tar
 crowd_data/

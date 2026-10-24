@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# Точка входа контейнера: первый аргумент выбирает роль сервиса.
 set -e
 
 case "$1" in
@@ -13,7 +13,18 @@ case "$1" in
       --access-logfile -
     ;;
   worker)
-    exec celery -A config worker -l info --concurrency="${WORKER_CONCURRENCY:-2}"
+    concurrency="${WORKER_CONCURRENCY:-1}"
+    # Расчёты идут на CPU: делим ядра между процессами воркера, чтобы они не мешали друг другу.
+    # Можно задать вручную переменной OMP_NUM_THREADS в .env.
+    if [ -z "$OMP_NUM_THREADS" ]; then
+      threads=$(( $(nproc) / concurrency ))
+      if [ "$threads" -lt 1 ]; then
+        threads=1
+      fi
+      export OMP_NUM_THREADS="$threads" MKL_NUM_THREADS="$threads" OPENBLAS_NUM_THREADS="$threads"
+    fi
+    echo "worker: процессов $concurrency, потоков CPU на процесс $OMP_NUM_THREADS"
+    exec celery -A config worker -l info --concurrency="$concurrency"
     ;;
   beat)
     exec celery -A config beat -l info -s /tmp/celerybeat-schedule

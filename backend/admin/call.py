@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models.call import Call, Evaluation, Transcript
+from call_recognition.models.call import Call, Evaluation, Transcript
 
 
 @admin.register(Call)

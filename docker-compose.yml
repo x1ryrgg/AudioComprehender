@@ -64,7 +64,11 @@ services:
     command: ["worker"]
     environment:
       <<: *backend-env
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+      # Вычисления в контейнере на CPU: Whisper в int8 (float16 на CPU не поддерживается)
+      WHISPER_DEVICE: cpu
+      WHISPER_COMPUTE_TYPE: int8
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-medium}
     # PyTorch использует общую память между процессами; значение по умолчанию (64 МБ) мало
     shm_size: "2gb"
     volumes:
@@ -73,13 +77,6 @@ services:
     depends_on:
       web:
         condition: service_healthy
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
   beat:
     <<: *backend

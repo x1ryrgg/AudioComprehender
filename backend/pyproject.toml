@@ -57,3 +57,9 @@ torchaudio = {source = "pytorch-cu130"}
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "jupyterlab (>=4.6.4,<5.0.0)",
+    "ipykernel (>=7.4.0,<8.0.0)"
+]
